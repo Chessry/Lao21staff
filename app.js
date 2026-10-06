@@ -245,6 +245,38 @@ function mergeTiers(base, incoming) {
   return merged;
 }
 
+function sanitizeTiersData() {
+  if (!allApplicants || allApplicants.length === 0) return;
+  const validIdSet = new Set(allApplicants.filter(a => !a.isExcluded).map(a => Number(a.id)));
+  let modified = false;
+
+  for (const dept in departmentTiers) {
+    if (!departmentTiers[dept] || typeof departmentTiers[dept] !== 'object') {
+      delete departmentTiers[dept];
+      modified = true;
+      continue;
+    }
+    for (const appId in departmentTiers[dept]) {
+      const numId = Number(appId);
+      // Remove any test/dummy keys (e.g. 'APP-001') or disqualified applicants
+      if (isNaN(numId) || !validIdSet.has(numId)) {
+        delete departmentTiers[dept][appId];
+        modified = true;
+      }
+    }
+    if (Object.keys(departmentTiers[dept]).length === 0) {
+      delete departmentTiers[dept];
+      modified = true;
+    }
+  }
+
+  if (modified) {
+    try {
+      localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
+    } catch (e) {}
+  }
+}
+
 async function loadTiersData() {
   // 1. Try local storage first (instant rendering)
   try {
@@ -255,6 +287,10 @@ async function loadTiersData() {
   } catch (e) {
     departmentTiers = {};
   }
+
+  // Sanitize any residual test data from localStorage
+  sanitizeTiersData();
+  updateTierNavBadge();
 
   // 2. Fetch from /api/tiers (handled by Vercel Serverless api/tiers.js or Localhost server.py)
   await syncFromCloud(false);
@@ -274,10 +310,21 @@ async function syncFromCloud(showFeedback = true) {
     });
     if (res.ok) {
       const cloudData = await res.json();
-      if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
-        departmentTiers = mergeTiers(departmentTiers, cloudData);
-        localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
+      if (cloudData && typeof cloudData === 'object') {
+        if (Object.keys(cloudData).length === 0) {
+          // Cloud is clean/empty - ensure local test residue is also wiped
+          sanitizeTiersData();
+          if (Object.keys(departmentTiers).length === 0) {
+            localStorage.setItem('camp_staff_tiers', JSON.stringify({}));
+          }
+        } else {
+          departmentTiers = mergeTiers(departmentTiers, cloudData);
+          sanitizeTiersData();
+          localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
+        }
+
         updateTierNavBadge();
+        setupTierUI();
         renderTierListBoard();
         renderCandidateCards();
 
@@ -384,9 +431,17 @@ setInterval(() => {
 function updateTierNavBadge() {
   const badgeEl = document.getElementById('tab-tier-badge');
   if (!badgeEl) return;
+  sanitizeTiersData();
+  const validIdSet = (allApplicants && allApplicants.length > 0)
+    ? new Set(allApplicants.filter(a => !a.isExcluded).map(a => Number(a.id)))
+    : null;
+
   let totalRanked = 0;
   Object.values(departmentTiers).forEach(deptMap => {
-    Object.values(deptMap).forEach(entry => {
+    if (!deptMap || typeof deptMap !== 'object') return;
+    Object.entries(deptMap).forEach(([appId, entry]) => {
+      const numId = Number(appId);
+      if (validIdSet && (!numId || !validIdSet.has(numId))) return;
       if (entry && entry.tier && entry.tier > 0) totalRanked++;
     });
   });
@@ -445,6 +500,7 @@ function resetDeptTiers() {
   if (departmentTiers[currentTierDepartment]) {
     delete departmentTiers[currentTierDepartment];
     saveTiersData({ action: 'reset', dept: currentTierDepartment });
+    updateTierNavBadge();
     setupTierUI();
     renderTierListBoard();
     renderCandidateCards();
@@ -628,6 +684,9 @@ function setupTierUI() {
   if (overallProgressEl) {
     overallProgressEl.innerHTML = `<i data-lucide="award" class="w-3 h-3 text-amber-500 inline mr-1"></i>จัดแล้วรวม <strong class="font-mono text-zinc-800">${totalRankedAllDepts}</strong> รายการ (${completeDeptsCount}/${appData.departments.length} ฝ่ายครบ)`;
   }
+
+  // Sync nav tab badge
+  updateTierNavBadge();
 
   lucide.createIcons();
 }

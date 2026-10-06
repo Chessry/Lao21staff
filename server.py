@@ -62,6 +62,14 @@ class StaffAppHandler(SimpleHTTPRequestHandler):
                 content_length = int(self.headers.get('Content-Length', 0))
                 body = self.rfile.read(content_length)
                 data = json.loads(body.decode('utf-8'))
+                if isinstance(data, dict):
+                    clean_data = {}
+                    for dept, items in data.items():
+                        if isinstance(items, dict):
+                            clean_items = {k: v for k, v in items.items() if str(k).isdigit() and int(k) > 0}
+                            if clean_items:
+                                clean_data[dept] = clean_items
+                    data = clean_data
                 with open('tiers.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
 

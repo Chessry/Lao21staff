@@ -75,10 +75,32 @@ module.exports = async function handler(req, res) {
       // Merge departments
       const merged = { ...(existingData || {}) };
       for (const dept in payload) {
+        if (dept === 'action' || !payload[dept] || typeof payload[dept] !== 'object') continue;
         if (!merged[dept]) {
-          merged[dept] = { ...payload[dept] };
-        } else {
-          merged[dept] = { ...merged[dept], ...payload[dept] };
+          merged[dept] = {};
+        }
+        for (const appId in payload[dept]) {
+          const numId = Number(appId);
+          if (!isNaN(numId) && numId > 0) {
+            merged[dept][appId] = payload[dept][appId];
+          }
+        }
+      }
+
+      // Cleanse any non-numeric/dummy keys across all departments
+      for (const dept in merged) {
+        if (!merged[dept] || typeof merged[dept] !== 'object') {
+          delete merged[dept];
+          continue;
+        }
+        for (const appId in merged[dept]) {
+          const numId = Number(appId);
+          if (isNaN(numId) || numId <= 0) {
+            delete merged[dept][appId];
+          }
+        }
+        if (Object.keys(merged[dept]).length === 0) {
+          delete merged[dept];
         }
       }
 
