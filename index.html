@@ -356,20 +356,24 @@
 
           <div class="flex flex-wrap items-center gap-1.5 text-xs">
             <span id="tier-save-status" class="text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium">
-              <i data-lucide="check" class="w-3.5 h-3.5"></i>
-              <span>บันทึกข้อมูลแล้ว</span>
+              <i data-lucide="cloud" class="w-3.5 h-3.5"></i>
+              <span>ซิงค์ Cloud ข้ามอุปกรณ์แล้ว</span>
             </span>
+            <button onclick="syncFromCloud(true)" title="ดึงข้อมูลล่าสุดจาก Cloud เพื่ออัปเดตข้ามอุปกรณ์และผู้ใช้" class="inline-flex items-center space-x-1 bg-sky-50 hover:bg-sky-100 text-sky-800 px-2.5 py-1.5 rounded-lg border border-sky-200 transition-colors font-medium">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>ดึงข้อมูล Cloud</span>
+            </button>
             <button onclick="copyTierSummary()" title="คัดลอกสรุปรายชื่อแยก Tier สำหรับส่งใน LINE" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
               <i data-lucide="copy" class="w-3.5 h-3.5"></i>
               <span>คัดลอกสรุป</span>
             </button>
             <button onclick="exportTiersJson()" title="ดาวน์โหลดไฟล์สำรองการจัด Tier ทั้งหมดเก็บไว้" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span>ส่งออก (Backup)</span>
+              <span>ส่งออก</span>
             </button>
             <label title="นำเข้าไฟล์สำรองเพื่อกู้คืนหรือแชร์ข้อมูลกับทีมงาน" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium cursor-pointer">
               <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>นำเข้า (Restore)</span>
+              <span>นำเข้า</span>
               <input type="file" id="tier-import-file" accept=".json" class="hidden" onchange="importTiersJson(event)">
             </label>
             <button onclick="resetDeptTiers()" title="ล้างการจัดระดับเฉพาะฝ่ายที่เลือกอยู่" class="inline-flex items-center space-x-1 text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-lg transition-colors font-medium">
@@ -520,11 +524,16 @@
               <span>โหมดเปรียบเทียบผู้สมัคร (Side-by-Side Comparison)</span>
             </h2>
             <p class="text-xs text-zinc-500 mt-0.5">เลือกเปรียบเทียบได้สูงสุด 4 คน เพื่ออ่านคำตอบข้อต่อข้อและเปรียบเทียบคุณสมบัติ</p>
+            <div class="mt-1.5 flex items-center space-x-1.5 text-[11px] text-amber-700 bg-amber-50/80 px-2.5 py-1 rounded-md border border-amber-200/80 w-fit">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+              <span>การเปรียบเทียบเป็นข้อมูลชั่วคราว (จะรีเซ็ตอัตโนมัติเมื่อรีเฟรชหน้าเว็บหรือเปลี่ยนอุปกรณ์)</span>
+            </div>
           </div>
 
           <div class="flex items-center space-x-2">
-            <button onclick="clearComparison()" class="text-xs text-zinc-600 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition-colors">
-              ล้างการเปรียบเทียบ
+            <button onclick="clearComparison()" title="รีเซ็ตและล้างรายชื่อที่เลือกเปรียบเทียบทั้งหมด" class="text-xs text-zinc-600 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition-colors flex items-center space-x-1">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>รีเซ็ตการเปรียบเทียบ</span>
             </button>
             <button onclick="switchMainView('candidates')" class="text-xs bg-zinc-900 text-white hover:bg-zinc-800 px-3 py-1.5 rounded-lg transition-colors">
               + เลือกผู้สมัครเพิ่ม

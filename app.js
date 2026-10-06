@@ -212,11 +212,42 @@ async function loadData() {
 }
 
 // ==========================================
-// TIER LIST PERSISTENCE & DATA MANAGEMENT
-// ==========================================
+// TIER LIST PERSISTENCE & DATA MANAGEMENT (CROSS-DEVICE CLOUD SYNC)
+// ====================================================================
+const CLOUD_TIERS_URL = 'https://extendsclass.com/api/json-storage/bin/cdbfeab';
+let cloudSaveTimer = null;
+
+function mergeTiers(base, incoming) {
+  if (!incoming || typeof incoming !== 'object') return base || {};
+  if (!base || typeof base !== 'object') return incoming || {};
+  const merged = { ...base };
+
+  for (const dept in incoming) {
+    if (!merged[dept]) {
+      merged[dept] = { ...incoming[dept] };
+    } else {
+      merged[dept] = { ...merged[dept] };
+      for (const appId in incoming[dept]) {
+        const baseEntry = merged[dept][appId];
+        const incEntry = incoming[dept][appId];
+        if (!baseEntry) {
+          merged[dept][appId] = incEntry;
+        } else {
+          const baseTime = baseEntry.updatedAt ? new Date(baseEntry.updatedAt).getTime() : 0;
+          const incTime = incEntry.updatedAt ? new Date(incEntry.updatedAt).getTime() : 0;
+          if (incTime >= baseTime) {
+            merged[dept][appId] = incEntry;
+          }
+        }
+      }
+    }
+  }
+  return merged;
+}
+
 async function loadTiersData() {
+  // 1. Try local storage first (instant rendering)
   try {
-    // 1. Try local storage first
     const local = localStorage.getItem('camp_staff_tiers');
     if (local) {
       departmentTiers = JSON.parse(local);
@@ -225,65 +256,120 @@ async function loadTiersData() {
     departmentTiers = {};
   }
 
-  // 2. Fetch from server API if available
+  // 2. Fetch from local server API if running on localhost
   try {
     const res = await fetch('/api/tiers');
     if (res.ok) {
       const serverTiers = await res.json();
       if (serverTiers && typeof serverTiers === 'object' && Object.keys(serverTiers).length > 0) {
-        // Merge server tiers
-        departmentTiers = { ...departmentTiers, ...serverTiers };
+        departmentTiers = mergeTiers(departmentTiers, serverTiers);
         localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
       }
     }
   } catch (e) {
-    console.log('Running offline or file:// mode, using localStorage for tiers.');
+    // Offline / Vercel mode
   }
+
+  // 3. Fetch from Shared Cloud Storage (Cross-device persistence)
+  await syncFromCloud(false);
+}
+
+async function syncFromCloud(showFeedback = true) {
+  const statusEl = document.getElementById('tier-save-status');
+  if (showFeedback && statusEl) {
+    statusEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังดึงข้อมูล Cloud...</span>`;
+    statusEl.className = 'text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center space-x-1 font-medium';
+    lucide.createIcons();
+  }
+
+  try {
+    const res = await fetch(CLOUD_TIERS_URL);
+    if (res.ok) {
+      const cloudData = await res.json();
+      if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
+        departmentTiers = mergeTiers(departmentTiers, cloudData);
+        localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
+        updateTierNavBadge();
+        renderTierListBoard();
+        renderCandidateCards();
+
+        if (statusEl) {
+          statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span>ซิงค์ Cloud เรียบร้อย</span>`;
+          statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
+          lucide.createIcons();
+        }
+
+        if (showFeedback) {
+          alert('ซิงค์และอัปเดตข้อมูลการจัด Tier จาก Cloud สำเร็จ!');
+        }
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn('Unable to sync from cloud:', e);
+    if (showFeedback) {
+      alert('ไม่สามารถเชื่อมต่อ Cloud ได้ในขณะนี้ ข้อมูลปัจจุบันถูกบันทึกไว้ในเครื่องเรียบร้อยแล้ว');
+    }
+  }
+  return false;
 }
 
 async function saveTiersData() {
-  // Save to LocalStorage
+  // 1. Save to LocalStorage immediately
   try {
     localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
   } catch (e) {
     console.error('Failed to save to localStorage:', e);
   }
 
-  // Save to Server API
-  try {
-    const statusEl = document.getElementById('tier-save-status');
-    if (statusEl) {
-      statusEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังบันทึก...</span>`;
-      statusEl.className = 'text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 flex items-center space-x-1 font-medium';
-    }
+  const statusEl = document.getElementById('tier-save-status');
+  if (statusEl) {
+    statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกในเครื่องแล้ว</span>`;
+    statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
+    lucide.createIcons();
+  }
 
-    const res = await fetch('/api/tiers', {
+  // 2. Save to local server if available
+  try {
+    fetch('/api/tiers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(departmentTiers)
-    });
+    }).catch(() => {});
+  } catch (e) {}
 
-    if (res.ok) {
+  // 3. Debounce save to Cloud (Cross-Device & Cross-User persistence)
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = setTimeout(async () => {
+    try {
       if (statusEl) {
-        statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกข้อมูลแล้ว</span>`;
-        statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 flex items-center space-x-1 font-medium';
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังซิงค์ Cloud...</span>`;
+        statusEl.className = 'text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center space-x-1 font-medium';
         lucide.createIcons();
       }
-    } else {
+
+      const res = await fetch(CLOUD_TIERS_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(departmentTiers)
+      });
+
+      if (res.ok) {
+        if (statusEl) {
+          statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span>ซิงค์ Cloud ข้ามอุปกรณ์แล้ว</span>`;
+          statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
+          lucide.createIcons();
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud sync error, local data intact:', e);
       if (statusEl) {
         statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกในเครื่องแล้ว</span>`;
-        statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 flex items-center space-x-1 font-medium';
+        statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
         lucide.createIcons();
       }
     }
-  } catch (e) {
-    const statusEl = document.getElementById('tier-save-status');
-    if (statusEl) {
-      statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกในเครื่องแล้ว</span>`;
-      statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 flex items-center space-x-1 font-medium';
-      lucide.createIcons();
-    }
-  }
+  }, 600);
 
   // Update badge counters
   updateTierNavBadge();
