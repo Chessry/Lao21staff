@@ -256,21 +256,7 @@ async function loadTiersData() {
     departmentTiers = {};
   }
 
-  // 2. Fetch from local server API if running on localhost
-  try {
-    const res = await fetch('/api/tiers');
-    if (res.ok) {
-      const serverTiers = await res.json();
-      if (serverTiers && typeof serverTiers === 'object' && Object.keys(serverTiers).length > 0) {
-        departmentTiers = mergeTiers(departmentTiers, serverTiers);
-        localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
-      }
-    }
-  } catch (e) {
-    // Offline / Vercel mode
-  }
-
-  // 3. Fetch from Shared Cloud Storage (Cross-device persistence)
+  // 2. Fetch from /api/tiers (handled by Vercel Serverless api/tiers.js or Localhost server.py)
   await syncFromCloud(false);
 }
 
@@ -283,7 +269,9 @@ async function syncFromCloud(showFeedback = true) {
   }
 
   try {
-    const res = await fetch(CLOUD_TIERS_URL);
+    const res = await fetch('/api/tiers?t=' + Date.now(), {
+      headers: { 'Cache-Control': 'no-cache, no-store' }
+    });
     if (res.ok) {
       const cloudData = await res.json();
       if (cloudData && typeof cloudData === 'object' && Object.keys(cloudData).length > 0) {
@@ -306,15 +294,21 @@ async function syncFromCloud(showFeedback = true) {
       }
     }
   } catch (e) {
-    console.warn('Unable to sync from cloud:', e);
+    console.warn('Unable to sync from cloud API:', e);
     if (showFeedback) {
       alert('ไม่สามารถเชื่อมต่อ Cloud ได้ในขณะนี้ ข้อมูลปัจจุบันถูกบันทึกไว้ในเครื่องเรียบร้อยแล้ว');
     }
   }
+
+  if (statusEl) {
+    statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span>ซิงค์ Cloud เรียบร้อย</span>`;
+    statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
+    lucide.createIcons();
+  }
   return false;
 }
 
-async function saveTiersData() {
+async function saveTiersData(customPayload = null) {
   // 1. Save to LocalStorage immediately
   try {
     localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
@@ -324,56 +318,68 @@ async function saveTiersData() {
 
   const statusEl = document.getElementById('tier-save-status');
   if (statusEl) {
-    statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกในเครื่องแล้ว</span>`;
-    statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
+    statusEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังบันทึก Cloud...</span>`;
+    statusEl.className = 'text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center space-x-1 font-medium';
     lucide.createIcons();
   }
 
-  // 2. Save to local server if available
-  try {
-    fetch('/api/tiers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(departmentTiers)
-    }).catch(() => {});
-  } catch (e) {}
-
-  // 3. Debounce save to Cloud (Cross-Device & Cross-User persistence)
+  // 2. Debounce save to Cloud via /api/tiers
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(async () => {
     try {
-      if (statusEl) {
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>กำลังซิงค์ Cloud...</span>`;
-        statusEl.className = 'text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 flex items-center space-x-1 font-medium';
-        lucide.createIcons();
-      }
-
-      const res = await fetch(CLOUD_TIERS_URL, {
-        method: 'PUT',
+      const payload = customPayload || departmentTiers;
+      const res = await fetch('/api/tiers', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(departmentTiers)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
+        const result = await res.json();
+        if (result && result.tiers && typeof result.tiers === 'object') {
+          departmentTiers = mergeTiers(departmentTiers, result.tiers);
+          localStorage.setItem('camp_staff_tiers', JSON.stringify(departmentTiers));
+        }
+
         if (statusEl) {
-          statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span>ซิงค์ Cloud ข้ามอุปกรณ์แล้ว</span>`;
+          statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span>ซิงค์ Cloud เรียบร้อย</span>`;
           statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
           lucide.createIcons();
         }
+      } else {
+        throw new Error('API returned status ' + res.status);
       }
     } catch (e) {
-      console.warn('Cloud sync error, local data intact:', e);
+      console.warn('Cloud save error, fallback to local:', e);
       if (statusEl) {
         statusEl.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>บันทึกในเครื่องแล้ว</span>`;
         statusEl.className = 'text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium';
         lucide.createIcons();
       }
     }
-  }, 600);
+  }, 400);
 
   // Update badge counters
   updateTierNavBadge();
 }
+
+// Auto-sync when tab becomes visible or focused
+window.addEventListener('focus', () => {
+  syncFromCloud(false);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncFromCloud(false);
+  }
+});
+
+// Periodic background sync every 20 seconds
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    syncFromCloud(false);
+  }
+}, 20000);
 
 function updateTierNavBadge() {
   const badgeEl = document.getElementById('tab-tier-badge');
@@ -434,7 +440,7 @@ function resetDeptTiers() {
   }
   if (departmentTiers[currentTierDepartment]) {
     delete departmentTiers[currentTierDepartment];
-    saveTiersData();
+    saveTiersData({ action: 'reset', dept: currentTierDepartment });
     renderTierListBoard();
     renderCandidateCards();
     alert(`ล้างการจัด Tier ของ ${currentTierDepartment} เรียบร้อยแล้ว`);

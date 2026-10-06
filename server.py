@@ -42,9 +42,10 @@ class StaffAppHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'status': 'error', 'message': str(e)}).encode('utf-8'))
                 return
 
-        if self.path == '/api/tiers':
+        if self.path.startswith('/api/tiers'):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.end_headers()
             if os.path.exists('tiers.json'):
                 with open('tiers.json', 'rb') as f:
@@ -60,10 +61,25 @@ class StaffAppHandler(SimpleHTTPRequestHandler):
             try:
                 content_length = int(self.headers.get('Content-Length', 0))
                 body = self.rfile.read(content_length)
-                # Validate json
                 data = json.loads(body.decode('utf-8'))
                 with open('tiers.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
+
+                # Sync to cloud in background thread
+                def _bg_cloud_sync(payload):
+                    try:
+                        import urllib.request
+                        req = urllib.request.Request(
+                            'https://extendsclass.com/api/json-storage/bin/cdbfeab',
+                            data=json.dumps(payload).encode('utf-8'),
+                            headers={'Content-Type': 'application/json'},
+                            method='PUT'
+                        )
+                        urllib.request.urlopen(req, timeout=5)
+                    except Exception as err:
+                        print(f"Background cloud sync error: {err}")
+
+                threading.Thread(target=_bg_cloud_sync, args=(data,)).start()
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
