@@ -387,8 +387,11 @@
 
         <!-- Department Selector Pills for Tier List -->
         <div>
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-semibold text-zinc-600 uppercase tracking-wide">เลือกฝ่ายที่ต้องการจัดอันดับ Tier</span>
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-semibold text-zinc-700 uppercase tracking-wide">เลือกฝ่ายที่ต้องการจัดอันดับ Tier</span>
+              <span id="tier-overall-stats" class="text-[11px] text-zinc-600 bg-zinc-100 px-2 py-0.5 rounded-full font-medium border border-zinc-200"></span>
+            </div>
             <span id="tier-current-dept-label" class="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
               ฝ่ายพี่บ้าน
             </span>
@@ -409,12 +412,9 @@
             </div>
           </div>
 
-          <div class="flex items-center space-x-3 text-zinc-500 mt-2 sm:mt-0">
-            <span>ผู้สมัครในฝ่ายนี้: <strong id="tier-dept-total-count" class="text-zinc-900 font-mono">0</strong> คน</span>
-            <label class="flex items-center space-x-1.5 cursor-pointer">
-              <input type="checkbox" id="tier-hide-excluded" onchange="renderTierListBoard()" checked class="w-3.5 h-3.5 rounded text-zinc-900 border-zinc-300">
-              <span class="text-[11px] text-zinc-600">ซ่อนผู้ถูกตัดสิทธิ์</span>
-            </label>
+          <div class="flex items-center space-x-2.5 text-zinc-500 mt-2 sm:mt-0 text-xs">
+            <span>ผู้สมัครที่ผ่านเกณฑ์ในฝ่ายนี้: <strong id="tier-dept-total-count" class="text-zinc-900 font-mono font-bold">0</strong> คน</span>
+            <span class="text-[11px] text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200">ตัดสิทธิ์ 5 คนออกแล้ว</span>
           </div>
         </div>
 
@@ -785,7 +785,7 @@
             </div>
 
             <!-- Modal Tier Ranking Bar (เฉพาะฝ่าย) -->
-            <div class="mt-3 pt-2.5 border-t border-zinc-200/80 flex flex-wrap items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-zinc-200/90 shadow-2xs">
+            <div id="modal-tier-ranking-bar" class="mt-3 pt-2.5 border-t border-zinc-200/80 flex flex-wrap items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-zinc-200/90 shadow-2xs">
               <div class="flex items-center space-x-2">
                 <span class="text-xs font-semibold text-zinc-700 flex items-center space-x-1">
                   <i data-lucide="award" class="w-3.5 h-3.5 text-amber-500"></i>
@@ -806,6 +806,12 @@
               <div class="w-full">
                 <input type="text" id="modal-tier-note-input" onchange="saveModalTierNote()" placeholder="พิมพ์โน้ตการสัมภาษณ์/คะแนนประเมินสำหรับฝ่ายนี้..." class="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-colors">
               </div>
+            </div>
+
+            <!-- Warning for excluded applicant in modal -->
+            <div id="modal-excluded-warning" class="hidden mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-medium flex items-center space-x-2">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-rose-600 shrink-0"></i>
+              <span>ผู้สมัครรายนี้ถูกตัดสิทธิ์ตามเงื่อนไข (ไม่สามารถประเมิน Tier หรือเปรียบเทียบได้)</span>
             </div>
           </div>
         </div>

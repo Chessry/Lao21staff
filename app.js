@@ -412,6 +412,9 @@ function getApplicantNote(dept, applicantId) {
 
 function setApplicantTier(dept, applicantId, tier, note = null) {
   if (!dept || !applicantId) return;
+  const applicant = allApplicants.find(a => a.id === applicantId);
+  if (applicant && applicant.isExcluded) return;
+
   if (!departmentTiers[dept]) {
     departmentTiers[dept] = {};
   }
@@ -430,6 +433,7 @@ function setApplicantTier(dept, applicantId, tier, note = null) {
   }
 
   saveTiersData();
+  setupTierUI();
   renderTierListBoard();
   renderCandidateCards(); // Update any tier badges in candidates view
 }
@@ -441,6 +445,7 @@ function resetDeptTiers() {
   if (departmentTiers[currentTierDepartment]) {
     delete departmentTiers[currentTierDepartment];
     saveTiersData({ action: 'reset', dept: currentTierDepartment });
+    setupTierUI();
     renderTierListBoard();
     renderCandidateCards();
     alert(`ล้างการจัด Tier ของ ${currentTierDepartment} เรียบร้อยแล้ว`);
@@ -450,7 +455,7 @@ function resetDeptTiers() {
 function copyTierSummary() {
   const dept = currentTierDepartment;
   const candidatesInDept = allApplicants.filter(a => {
-    return a.choice1.dept === dept || a.choice2.dept === dept;
+    return !a.isExcluded && (a.choice1.dept === dept || a.choice2.dept === dept);
   });
 
   const t1 = [];
@@ -540,20 +545,65 @@ function setupTierUI() {
   if (!container || !appData) return;
 
   container.innerHTML = '';
+  
+  // Eligible applicants only (strictly exclude 5 disqualified candidates)
+  const eligible = allApplicants.filter(a => !a.isExcluded);
+
+  let totalRankedAllDepts = 0;
+  let completeDeptsCount = 0;
+
   appData.departments.forEach(dept => {
     const btn = document.createElement('button');
     const isSelected = currentTierDepartment === dept;
     const style = getDeptStyle(dept);
 
-    // Count applicants who applied for this department
-    const count = allApplicants.filter(a => a.choice1.dept === dept || a.choice2.dept === dept).length;
+    // Count eligible applicants who applied for this department (Choice 1 or Choice 2)
+    const deptCandidates = eligible.filter(a => a.choice1.dept === dept || a.choice2.dept === dept);
+    const totalCount = deptCandidates.length;
 
-    btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 flex items-center space-x-1.5 border ${
+    // Count how many have been assigned a Tier (1, 2, or 3)
+    const deptMap = departmentTiers[dept] || {};
+    const rankedCount = deptCandidates.filter(a => {
+      const entry = deptMap[a.id];
+      return entry && entry.tier && entry.tier > 0;
+    }).length;
+
+    totalRankedAllDepts += rankedCount;
+    if (rankedCount === totalCount && totalCount > 0) {
+      completeDeptsCount++;
+    }
+
+    btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 flex items-center space-x-2 border ${
       isSelected
         ? `${style.activePill} border-transparent shadow-xs scale-102`
         : `${style.pill} shadow-2xs`
     }`;
-    btn.innerHTML = `<span>${style.name}</span><span class="text-[11px] px-1.5 py-0.2 rounded-full font-mono font-medium ${isSelected ? style.activeCountBadge : style.countBadge}">${count}</span>`;
+
+    // Distinctive status badge showing how many have been ranked in this department
+    let badgeHtml = '';
+    if (rankedCount === 0) {
+      badgeHtml = `<span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-medium ${
+        isSelected ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500 border border-zinc-200'
+      }" title="ยังไม่มีการจัด Tier">0/${totalCount}</span>`;
+    } else if (rankedCount === totalCount && totalCount > 0) {
+      badgeHtml = `<span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+        isSelected ? 'bg-emerald-700 text-white shadow-2xs' : 'bg-emerald-600 text-white shadow-2xs'
+      } flex items-center space-x-0.5" title="จัดครบทุกคนแล้ว (${rankedCount}/${totalCount})">
+        <i data-lucide="check-check" class="w-3 h-3"></i>
+        <span>${rankedCount}/${totalCount}</span>
+      </span>`;
+    } else {
+      badgeHtml = `<span class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
+        isSelected ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800 border border-amber-300'
+      } flex items-center space-x-0.5" title="จัดแล้ว ${rankedCount} จาก ${totalCount} คน">
+        <i data-lucide="check" class="w-3 h-3"></i>
+        <span>${rankedCount}/${totalCount}</span>
+      </span>`;
+    }
+
+    btn.innerHTML = `<span>${style.name}</span>${badgeHtml}`;
+    btn.title = `ฝ่าย${style.name}: จัด Tier แล้ว ${rankedCount}/${totalCount} คน`;
+
     btn.onclick = () => {
       currentTierDepartment = dept;
       const label = document.getElementById('tier-current-dept-label');
@@ -572,6 +622,14 @@ function setupTierUI() {
   if (label) {
     label.textContent = currentTierDepartment;
   }
+
+  // Update overall progress label in tier list header if element exists
+  const overallProgressEl = document.getElementById('tier-overall-stats');
+  if (overallProgressEl) {
+    overallProgressEl.innerHTML = `<i data-lucide="award" class="w-3 h-3 text-amber-500 inline mr-1"></i>จัดแล้วรวม <strong class="font-mono text-zinc-800">${totalRankedAllDepts}</strong> รายการ (${completeDeptsCount}/${appData.departments.length} ฝ่ายครบ)`;
+  }
+
+  lucide.createIcons();
 }
 
 function setTierChoiceFilter(choice) {
@@ -590,11 +648,10 @@ function setTierChoiceFilter(choice) {
 // Render the 3-Tier Board for currentTierDepartment
 function renderTierListBoard() {
   const dept = currentTierDepartment;
-  const hideExcluded = document.getElementById('tier-hide-excluded')?.checked ?? true;
 
-  // Filter applicants who applied for this department
+  // Filter applicants who applied for this department (Strictly exclude the 5 disqualified applicants)
   const applicantsInDept = allApplicants.filter(applicant => {
-    if (hideExcluded && applicant.isExcluded) return false;
+    if (applicant.isExcluded) return false;
     const isC1 = applicant.choice1.dept === dept;
     const isC2 = applicant.choice2.dept === dept;
 
@@ -815,9 +872,9 @@ function setupUI() {
         : `${style.pill} shadow-2xs`
     }`;
     
-    // Count eligible applicants interested in this dept
+    // Count eligible applicants interested in this dept (strictly exclude 5 disqualified applicants)
     const count = allApplicants.filter(a => {
-      if (filters.hideExcluded && a.isExcluded) return false;
+      if (a.isExcluded) return false;
       return a.choice1.dept === dept || a.choice2.dept === dept;
     }).length;
 
@@ -1058,7 +1115,12 @@ function renderCandidateCards() {
 
       <!-- Bottom Action Strip (Includes Quick Tier Selector if a specific dept is chosen) -->
       <div class="pt-2 border-t border-zinc-100 flex items-center justify-between text-xs">
-        ${isSpecificDeptFiltered ? `
+        ${applicant.isExcluded ? `
+          <div class="inline-flex items-center space-x-1 text-[11px] text-rose-600 font-medium bg-rose-50 px-2 py-1 rounded-md border border-rose-200">
+            <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+            <span>ถูกตัดสิทธิ์ (ห้ามจัด Tier / เทียบ)</span>
+          </div>
+        ` : (isSpecificDeptFiltered ? `
           <!-- Quick Tier buttons on card -->
           <div class="inline-flex rounded-lg bg-zinc-100 p-0.5 border border-zinc-200 text-[10px] font-bold">
             <button onclick="setApplicantTier('${activeDept}', ${applicant.id}, 1)" class="px-2 py-0.5 rounded ${currentTier === 1 ? 'bg-emerald-600 text-white' : 'text-zinc-600 hover:text-emerald-700'}" title="Tier 1">T1</button>
@@ -1074,7 +1136,7 @@ function renderCandidateCards() {
             <i data-lucide="${isCompared ? 'check' : 'plus'}" class="w-3.5 h-3.5"></i>
             <span>${isCompared ? 'กำลังเทียบ' : 'เปรียบเทียบ'}</span>
           </button>
-        `}
+        `)}
 
         <button onclick="openDetailModal(${applicant.id})" class="inline-flex items-center space-x-1 text-indigo-700 hover:text-indigo-900 font-medium px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
           <span>ดูคำตอบทั้งหมด</span>
@@ -1178,18 +1240,28 @@ function openDetailModal(id) {
   c2Tag.className = `font-medium ${applicant.choice2.dept ? c2Style.badge : 'bg-zinc-100 text-zinc-500'} px-2 py-0.5 rounded-md`;
   c2Tag.textContent = applicant.choice2.dept || 'ไม่ได้เลือกอันดับ 2';
 
-  // Status Badge
+  // Status Badge & Controls Toggle for Excluded Applicants
   const statusBadge = document.getElementById('modal-status-badge');
+  const tierRankingBar = document.getElementById('modal-tier-ranking-bar');
+  const excludedWarning = document.getElementById('modal-excluded-warning');
+  const compareToggleBtn = document.getElementById('modal-compare-toggle-btn');
+
   if (applicant.isExcluded) {
     statusBadge.classList.remove('hidden');
     statusBadge.textContent = `ถูกตัดสิทธิ์: ${applicant.exclusionReasons.join(', ')}`;
+    if (tierRankingBar) tierRankingBar.classList.add('hidden');
+    if (excludedWarning) excludedWarning.classList.remove('hidden');
+    if (compareToggleBtn) compareToggleBtn.classList.add('hidden');
   } else {
     statusBadge.classList.add('hidden');
+    if (tierRankingBar) tierRankingBar.classList.remove('hidden');
+    if (excludedWarning) excludedWarning.classList.add('hidden');
+    if (compareToggleBtn) compareToggleBtn.classList.remove('hidden');
   }
 
-  // Setup Tier Ranking Department dropdown in Modal
+  // Setup Tier Ranking Department dropdown in Modal (only for eligible applicants)
   const tierSelect = document.getElementById('modal-tier-dept-select');
-  if (tierSelect) {
+  if (tierSelect && !applicant.isExcluded) {
     tierSelect.innerHTML = '';
     if (applicant.choice1.dept) {
       const opt1 = document.createElement('option');
@@ -1415,6 +1487,12 @@ function updateModalCompareButton() {
   const btn = document.getElementById('modal-compare-toggle-btn');
   if (!btn || !currentModalApplicant) return;
 
+  if (currentModalApplicant.isExcluded) {
+    btn.classList.add('hidden');
+    return;
+  }
+  btn.classList.remove('hidden');
+
   const isCompared = compareIds.includes(currentModalApplicant.id);
   btn.className = isCompared
     ? 'inline-flex items-center space-x-1 px-3 py-1 rounded-md text-xs font-medium bg-indigo-600 text-white transition-colors'
@@ -1424,7 +1502,7 @@ function updateModalCompareButton() {
 }
 
 function toggleCompareFromModal() {
-  if (!currentModalApplicant) return;
+  if (!currentModalApplicant || currentModalApplicant.isExcluded) return;
   toggleCompare(currentModalApplicant.id);
   updateModalCompareButton();
 }
@@ -1433,6 +1511,12 @@ function toggleCompareFromModal() {
 // COMPARISON LOGIC
 // ==========================================
 function toggleCompare(id) {
+  const applicant = allApplicants.find(a => a.id === id);
+  if (applicant && applicant.isExcluded) {
+    alert('ผู้สมัครรายนี้ถูกตัดสิทธิ์ตามเงื่อนไข ไม่สามารถนำมาเปรียบเทียบได้');
+    return;
+  }
+
   const index = compareIds.indexOf(id);
   if (index >= 0) {
     compareIds.splice(index, 1);
@@ -1452,6 +1536,12 @@ function toggleCompare(id) {
 function quickAddCompare(idStr) {
   if (!idStr) return;
   const id = parseInt(idStr, 10);
+  const applicant = allApplicants.find(a => a.id === id);
+  if (applicant && applicant.isExcluded) {
+    alert('ผู้สมัครรายนี้ถูกตัดสิทธิ์ตามเงื่อนไข ไม่สามารถนำมาเปรียบเทียบได้');
+    return;
+  }
+
   if (!compareIds.includes(id)) {
     if (compareIds.length >= 4) {
       alert('สามารถเลือกเปรียบเทียบได้สูงสุด 4 คนพร้อมกัน');
@@ -1508,13 +1598,12 @@ function updateQuickCompareDropdown() {
   if (!select) return;
 
   select.innerHTML = '<option value="">-- เลือกผู้สมัครเพิ่มเพื่อเปรียบเทียบ --</option>';
-  allApplicants.forEach(a => {
-    if (!a.isExcluded || !filters.hideExcluded) {
-      const opt = document.createElement('option');
-      opt.value = a.id;
-      opt.textContent = `${a.name} (${a.nickname}) [รหัส ${a.year}] - ${a.choice1.dept}`;
-      select.appendChild(opt);
-    }
+  // Strictly only eligible applicants (152 total)
+  allApplicants.filter(a => !a.isExcluded).forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = `${a.name} (${a.nickname}) [รหัส ${a.year}] - ${a.choice1.dept}`;
+    select.appendChild(opt);
   });
 }
 
