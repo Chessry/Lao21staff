@@ -1,0 +1,7 @@
+# Python runtime files
+__pycache__/
+*.py
+*.xlsx
+start_app.bat
+tiers.json
+.git

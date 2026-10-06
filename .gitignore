@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local files
+*.xlsx
+*.xls
+tiers.json
+
+# Environment & OS files
+.DS_Store
+Thumbs.db
+.vercel

@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ค่ายวิศวะเหลาดินสอ ครั้งที่ 21 • ระบบคัดกรองและประเมินสตาฟ</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  
+  <!-- Fonts: Prompt & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Preloaded Data for offline/file:// protocol support -->
+  <script src="data.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom clean scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    
+    .question-block {
+      border-left: 3px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+    .question-block:hover {
+      border-left-color: #0f172a;
+      background-color: #fafafa;
+    }
+  </style>
+</head>
+
+<body class="bg-[#F8F9FA] text-zinc-800 font-sans min-h-screen antialiased flex flex-col selection:bg-zinc-200">
+
+  <!-- TOP APP HEADER -->
+  <header class="bg-white border-b border-zinc-200/80 sticky top-0 z-30 shadow-xs backdrop-blur-md bg-white/95">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- App Title & Camp Logo Info -->
+        <div class="flex items-center space-x-3.5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 text-white flex items-center justify-center shadow-sm">
+            <i data-lucide="compass" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h1 class="text-base font-bold text-zinc-900 leading-tight">ค่ายวิศวะเหลาดินสอ ครั้งที่ 21</h1>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">Staff Screening</span>
+            </div>
+            <p class="text-xs text-zinc-500">ระบบคัดกรอง เปรียบเทียบ และประเมินคำตอบทีมงานสตาฟ</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center bg-zinc-100/90 p-1 rounded-xl border border-zinc-200/80 text-sm">
+          <button id="nav-candidates" onclick="switchMainView('candidates')" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg font-medium text-xs sm:text-sm transition-all duration-150 bg-white text-zinc-900 shadow-xs">
+            <i data-lucide="users" class="w-4 h-4 text-indigo-600"></i>
+            <span>รายชื่อ & ตรวจคำตอบ</span>
+            <span id="tab-candidate-count" class="text-xs px-1.5 py-0.2 rounded-full bg-indigo-50 text-indigo-700 font-mono font-medium border border-indigo-100">152</span>
+          </button>
+          <button id="nav-tierlist" onclick="switchMainView('tierlist')" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg font-medium text-xs sm:text-sm transition-all duration-150 text-zinc-600 hover:text-zinc-900">
+            <i data-lucide="award" class="w-4 h-4 text-amber-500"></i>
+            <span>จัด Tier List</span>
+            <span id="tab-tier-badge" class="hidden text-xs px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-mono">0</span>
+          </button>
+          <button id="nav-compare" onclick="switchMainView('compare')" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg font-medium text-xs sm:text-sm transition-all duration-150 text-zinc-600 hover:text-zinc-900">
+            <i data-lucide="columns-2" class="w-4 h-4 text-violet-500"></i>
+            <span>เปรียบเทียบ</span>
+            <span id="tab-compare-badge" class="hidden text-xs px-1.5 py-0.2 rounded-full bg-violet-600 text-white font-mono">0</span>
+          </button>
+          <button id="nav-stats" onclick="switchMainView('stats')" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg font-medium text-xs sm:text-sm transition-all duration-150 text-zinc-600 hover:text-zinc-900">
+            <i data-lucide="bar-chart-3" class="w-4 h-4 text-emerald-600"></i>
+            <span>สถิติภาพรวม</span>
+          </button>
+        </div>
+
+        <!-- Action Tools -->
+        <div class="flex items-center space-x-2">
+          <button onclick="reloadExcelData(event)" title="ซิงค์ข้อมูลล่าสุดจากไฟล์ Excel" class="inline-flex items-center space-x-1.5 text-xs text-zinc-600 hover:text-zinc-900 bg-white hover:bg-zinc-50 border border-zinc-200 px-3 py-1.5 rounded-lg transition-colors">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">ซิงค์ Excel</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: CANDIDATES LIST & FILTER SECTION -->
+    <!-- ========================================== -->
+    <div id="view-candidates" class="space-y-6">
+
+      <!-- TOP METRIC SUMMARY STRIP -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        
+        <!-- Total -->
+        <div class="bg-white border border-blue-100/90 rounded-2xl p-3.5 shadow-xs hover:border-blue-200 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ผู้สมัครทั้งหมด</span>
+            <div class="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <i data-lucide="users" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span id="kpi-total-raw" class="text-xl font-bold text-slate-900">157</span>
+            <span class="text-[11px] text-slate-400">คน</span>
+          </div>
+        </div>
+
+        <!-- Eligible -->
+        <div class="bg-white border border-emerald-100/90 rounded-2xl p-3.5 shadow-xs hover:border-emerald-200 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ผ่านเกณฑ์พิจารณา</span>
+            <div class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span id="kpi-total-eligible" class="text-xl font-bold text-slate-900">152</span>
+            <span class="text-[11px] text-emerald-700 font-semibold px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200">96.8%</span>
+          </div>
+        </div>
+
+        <!-- Excluded -->
+        <div class="bg-white border border-rose-100/90 rounded-2xl p-3.5 shadow-xs cursor-pointer hover:border-rose-200 hover:bg-rose-50/20 transition-all" onclick="openExcludedModal()">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ตัดสิทธิ์ออก</span>
+            <div class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span id="kpi-total-excluded" class="text-xl font-bold text-rose-600">5</span>
+            <span class="text-[11px] text-rose-600 font-medium underline flex items-center space-x-0.5">
+              <span>ดูรายชื่อ</span>
+              <i data-lucide="chevron-right" class="w-3 h-3"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- Year Ratio -->
+        <div class="bg-white border border-indigo-100/90 rounded-2xl p-3.5 shadow-xs hover:border-indigo-200 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">รหัส 68 : 69</span>
+            <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <i data-lucide="graduation-cap" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between font-mono">
+            <span id="kpi-year-ratio" class="text-lg font-bold text-slate-900">62 : 90</span>
+            <span class="text-[11px] text-indigo-600 font-sans font-medium">ปี 2 : ปี 1</span>
+          </div>
+        </div>
+
+        <!-- Gender Ratio -->
+        <div class="bg-white border border-sky-100/90 rounded-2xl p-3.5 shadow-xs hover:border-sky-200 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ชาย : หญิง</span>
+            <div class="w-6 h-6 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+              <i data-lucide="heart" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between font-mono">
+            <span id="kpi-gender-ratio" class="text-lg font-bold text-slate-900">67 : 85</span>
+            <span class="text-[11px] text-slate-500 font-sans">คน</span>
+          </div>
+        </div>
+
+        <!-- Top Dept -->
+        <div class="bg-white border border-amber-100/90 rounded-2xl p-3.5 shadow-xs hover:border-amber-200 transition-colors">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-slate-500 uppercase tracking-wider">ยอดนิยม #1</span>
+            <div class="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <i data-lucide="flame" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-base font-bold text-amber-900 truncate">พี่บ้าน</span>
+            <span class="text-[11px] text-amber-700 font-mono font-medium">68 คน</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FILTER PANEL -->
+      <div class="bg-white border border-zinc-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+        
+        <!-- Department Pill Tabs -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-semibold text-zinc-600 tracking-wide uppercase">เลือกดูตามฝ่าย</span>
+            <span id="filter-dept-label" class="text-xs text-zinc-400">ทั้งหมด (152 คน)</span>
+          </div>
+          <div id="dept-pills-container" class="flex flex-wrap gap-1.5">
+            <!-- Dynamically populated department pills -->
+          </div>
+        </div>
+
+        <hr class="border-zinc-100">
+
+        <!-- Secondary Filters Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 text-xs">
+          
+          <!-- Search Input -->
+          <div class="lg:col-span-4 relative">
+            <label class="block text-[11px] font-medium text-zinc-500 mb-1">ค้นหา (ชื่อ / รหัส / ภาควิชา / คำตอบ)</label>
+            <div class="relative">
+              <input type="text" id="filter-search" oninput="applyFilters()" placeholder="พิมพ์ชื่อ, ชื่อเล่น, รหัสนักศึกษา, คีย์เวิร์ด..." class="w-full bg-zinc-50 border border-zinc-200 rounded-lg pl-9 pr-3 py-2 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-colors">
+              <i data-lucide="search" class="w-4 h-4 text-zinc-400 absolute left-2.5 top-2.5"></i>
+            </div>
+          </div>
+
+          <!-- Choice Preference Filter (อันดับ 1 / 2) -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-medium text-zinc-500 mb-1">อันดับที่เลือกฝ่ายนี้</label>
+            <select id="filter-choice" onchange="applyFilters()" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-2 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-colors">
+              <option value="all">ทั้งหมด (อันดับ 1 หรือ 2)</option>
+              <option value="1">เฉพาะอันดับ 1</option>
+              <option value="2">เฉพาะอันดับ 2</option>
+            </select>
+          </div>
+
+          <!-- Student ID Year (68, 69) -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-medium text-zinc-500 mb-1">รหัสนักศึกษา</label>
+            <select id="filter-year" onchange="applyFilters()" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-2 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-colors">
+              <option value="all">รหัส 68 และ 69</option>
+              <option value="69">เฉพาะรหัส 69 (ปี 1)</option>
+              <option value="68">เฉพาะรหัส 68 (ปี 2)</option>
+            </select>
+          </div>
+
+          <!-- Gender Filter -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-medium text-zinc-500 mb-1">เพศ</label>
+            <select id="filter-gender" onchange="applyFilters()" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-2 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-colors">
+              <option value="all">ทุกเพศ</option>
+              <option value="ชาย">ชาย</option>
+              <option value="หญิง">หญิง</option>
+            </select>
+          </div>
+
+          <!-- Major Filter -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-medium text-zinc-500 mb-1">ภาควิชา</label>
+            <select id="filter-major" onchange="applyFilters()" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-2 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-colors">
+              <option value="all">ทุกภาควิชา</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Exclusion Toggle Strip -->
+        <div class="pt-2 flex flex-wrap items-center justify-between border-t border-zinc-100 text-xs">
+          <div class="flex items-center space-x-2">
+            <label class="relative flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="filter-hide-excluded" onchange="applyFilters()" checked class="w-4 h-4 rounded text-zinc-900 focus:ring-zinc-900 border-zinc-300">
+              <span class="text-zinc-700 font-medium">ตัดผู้สมัครชื่อแดง ชื่อเหลือง และรหัส 67 ออกอัตโนมัติ (ตามเกณฑ์คัดกรอง)</span>
+            </label>
+          </div>
+          <div class="flex items-center space-x-3 text-zinc-500 mt-2 sm:mt-0">
+            <span>แสดงผล <strong id="filter-result-count" class="text-zinc-900 font-mono">152</strong> คน</span>
+            <button onclick="resetAllFilters()" class="text-xs text-zinc-500 hover:text-zinc-900 underline">รีเซ็ตตัวกรอง</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CANDIDATES CARDS GRID -->
+      <div id="candidates-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered Applicant Cards -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="candidates-empty" class="hidden text-center py-16 bg-white border border-zinc-200 rounded-2xl">
+        <i data-lucide="user-x" class="w-10 h-10 text-zinc-400 mx-auto mb-3"></i>
+        <h3 class="text-sm font-semibold text-zinc-900">ไม่พบผู้สมัครที่ตรงกับเงื่อนไข</h3>
+        <p class="text-xs text-zinc-500 mt-1">ลองเปลี่ยนคำค้นหาหรือผ่อนคลายตัวกรอง</p>
+        <button onclick="resetAllFilters()" class="mt-3 text-xs bg-zinc-900 text-white px-3 py-1.5 rounded-lg">รีเซ็ตตัวกรองทั้งหมด</button>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: TIER LIST VIEW (3 ระดับ แยกรายฝ่าย) -->
+    <!-- ========================================== -->
+    <div id="view-tierlist" class="hidden space-y-6">
+      
+      <!-- Tier List Header & Dept Selector -->
+      <div class="bg-white border border-zinc-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-zinc-900 flex items-center space-x-2">
+              <i data-lucide="award" class="w-5 h-5 text-amber-500"></i>
+              <span>ระบบจัด Tier List รายชื่อ 3 ระดับ (บันทึกแยกเฉพาะฝ่าย)</span>
+            </h2>
+            <p class="text-xs text-zinc-500 mt-0.5">
+              จัดลำดับผู้สมัครออกเป็น 3 ระดับ พร้อมบันทึกโน้ต/คะแนนเฉพาะฝ่าย ข้อมูลจะถูกบันทึกแยกอิสระในแต่ละฝ่ายโดยอัตโนมัติ
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <span id="tier-save-status" class="text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center space-x-1 font-medium">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span>บันทึกข้อมูลแล้ว</span>
+            </span>
+            <button onclick="copyTierSummary()" title="คัดลอกสรุปรายชื่อแยก Tier สำหรับส่งใน LINE" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>คัดลอกสรุป</span>
+            </button>
+            <button onclick="exportTiersJson()" title="ดาวน์โหลดไฟล์สำรองการจัด Tier ทั้งหมดเก็บไว้" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>ส่งออก (Backup)</span>
+            </button>
+            <label title="นำเข้าไฟล์สำรองเพื่อกู้คืนหรือแชร์ข้อมูลกับทีมงาน" class="inline-flex items-center space-x-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 py-1.5 rounded-lg transition-colors font-medium cursor-pointer">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              <span>นำเข้า (Restore)</span>
+              <input type="file" id="tier-import-file" accept=".json" class="hidden" onchange="importTiersJson(event)">
+            </label>
+            <button onclick="resetDeptTiers()" title="ล้างการจัดระดับเฉพาะฝ่ายที่เลือกอยู่" class="inline-flex items-center space-x-1 text-rose-600 hover:bg-rose-50 px-2 py-1.5 rounded-lg transition-colors font-medium">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>รีเซ็ตฝ่ายนี้</span>
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-zinc-100">
+
+        <!-- Department Selector Pills for Tier List -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-zinc-600 uppercase tracking-wide">เลือกฝ่ายที่ต้องการจัดอันดับ Tier</span>
+            <span id="tier-current-dept-label" class="text-xs text-indigo-700 font-semibold bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+              ฝ่ายพี่บ้าน
+            </span>
+          </div>
+          <div id="tier-dept-pills" class="flex flex-wrap gap-1.5">
+            <!-- Populated department pills for Tier List -->
+          </div>
+        </div>
+
+        <!-- Tier Board Sub-filter (All vs Choice 1 only vs Choice 2 only) -->
+        <div class="pt-2 border-t border-zinc-100 flex flex-wrap items-center justify-between text-xs">
+          <div class="flex items-center space-x-2">
+            <span class="text-zinc-500">แสดงผู้สมัคร:</span>
+            <div class="inline-flex rounded-lg bg-zinc-100 p-0.5 border border-zinc-200 text-[11px]">
+              <button id="tier-filter-choice-all" onclick="setTierChoiceFilter('all')" class="px-2.5 py-1 rounded-md font-medium bg-white text-zinc-900 shadow-2xs">ทั้งหมด (อันดับ 1 + 2)</button>
+              <button id="tier-filter-choice-1" onclick="setTierChoiceFilter('1')" class="px-2.5 py-1 rounded-md font-medium text-zinc-600 hover:text-zinc-900">เฉพาะอันดับ 1</button>
+              <button id="tier-filter-choice-2" onclick="setTierChoiceFilter('2')" class="px-2.5 py-1 rounded-md font-medium text-zinc-600 hover:text-zinc-900">เฉพาะอันดับ 2</button>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-3 text-zinc-500 mt-2 sm:mt-0">
+            <span>ผู้สมัครในฝ่ายนี้: <strong id="tier-dept-total-count" class="text-zinc-900 font-mono">0</strong> คน</span>
+            <label class="flex items-center space-x-1.5 cursor-pointer">
+              <input type="checkbox" id="tier-hide-excluded" onchange="renderTierListBoard()" checked class="w-3.5 h-3.5 rounded text-zinc-900 border-zinc-300">
+              <span class="text-[11px] text-zinc-600">ซ่อนผู้ถูกตัดสิทธิ์</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TIER BOARD (4 SECTIONS: TIER 1, TIER 2, TIER 3, UNRANKED) -->
+      <div class="space-y-4">
+        
+        <!-- TIER 1: ตัวจริง / ดีเยี่ยม / ผ่านเกณฑ์ -->
+        <div class="bg-white border-2 border-emerald-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3" ondragover="allowDrop(event)" ondrop="dropToTier(event, 1)">
+          <div class="flex items-center justify-between pb-2 border-b border-emerald-100">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                T1
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-emerald-950 flex items-center space-x-1.5">
+                  <span>ระดับ 1 : ตัวจริง / ผ่านเกณฑ์ดีเยี่ยม (Tier 1)</span>
+                  <span id="tier-count-1" class="text-xs px-2 py-0.5 rounded-full font-mono bg-emerald-100 text-emerald-800 font-bold">0 คน</span>
+                </h3>
+                <p class="text-[11px] text-emerald-700">ผู้สมัครที่มีคุณสมบัติเหมาะสมที่สุด พร้อมรับเข้าทำงานฝ่ายนี้</p>
+              </div>
+            </div>
+          </div>
+          <div id="tier-container-1" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[60px] p-2 rounded-xl bg-emerald-50/20 border border-dashed border-emerald-200">
+            <!-- Tier 1 Cards -->
+          </div>
+        </div>
+
+        <!-- TIER 2: ตัวสำรอง / รอพิจารณา -->
+        <div class="bg-white border-2 border-amber-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3" ondragover="allowDrop(event)" ondrop="dropToTier(event, 2)">
+          <div class="flex items-center justify-between pb-2 border-b border-amber-100">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                T2
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-amber-950 flex items-center space-x-1.5">
+                  <span>ระดับ 2 : ตัวสำรอง / รอพิจารณา (Tier 2)</span>
+                  <span id="tier-count-2" class="text-xs px-2 py-0.5 rounded-full font-mono bg-amber-100 text-amber-800 font-bold">0 คน</span>
+                </h3>
+                <p class="text-[11px] text-amber-700">ผู้สมัครตัวสำรอง หรือมีจุดเด่นแต่ต้องพิจารณาเปรียบเทียบเพิ่มเติม</p>
+              </div>
+            </div>
+          </div>
+          <div id="tier-container-2" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[60px] p-2 rounded-xl bg-amber-50/20 border border-dashed border-amber-200">
+            <!-- Tier 2 Cards -->
+          </div>
+        </div>
+
+        <!-- TIER 3: สำรองลำดับท้าย / ไม่ผ่านเกณฑ์ -->
+        <div class="bg-white border-2 border-rose-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3" ondragover="allowDrop(event)" ondrop="dropToTier(event, 3)">
+          <div class="flex items-center justify-between pb-2 border-b border-rose-100">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-rose-500 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                T3
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-rose-950 flex items-center space-x-1.5">
+                  <span>ระดับ 3 : สำรองลำดับท้าย / ไม่ผ่านเกณฑ์ (Tier 3)</span>
+                  <span id="tier-count-3" class="text-xs px-2 py-0.5 rounded-full font-mono bg-rose-100 text-rose-800 font-bold">0 คน</span>
+                </h3>
+                <p class="text-[11px] text-rose-700">ผู้สมัครที่ไม่สอดคล้องกับคุณสมบัติของฝ่าย หรือสละสิทธิ์</p>
+              </div>
+            </div>
+          </div>
+          <div id="tier-container-3" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[60px] p-2 rounded-xl bg-rose-50/20 border border-dashed border-rose-200">
+            <!-- Tier 3 Cards -->
+          </div>
+        </div>
+
+        <!-- UNRANKED: ยังไม่ได้จัดอันดับ -->
+        <div class="bg-white border-2 border-zinc-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3" ondragover="allowDrop(event)" ondrop="dropToTier(event, 0)">
+          <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-zinc-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                --
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 flex items-center space-x-1.5">
+                  <span>ยังไม่ได้จัดระดับ (Unranked)</span>
+                  <span id="tier-count-0" class="text-xs px-2 py-0.5 rounded-full font-mono bg-zinc-200 text-zinc-800 font-bold">0 คน</span>
+                </h3>
+                <p class="text-[11px] text-zinc-500">ผู้สมัครที่รอการประเมิน สามารถลากการ์ดหรือกดปุ่ม T1, T2, T3 เพื่อจัดระดับ</p>
+              </div>
+            </div>
+          </div>
+          <div id="tier-container-0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 min-h-[80px] p-2 rounded-xl bg-zinc-50/40 border border-dashed border-zinc-200">
+            <!-- Unranked Cards -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: COMPARISON MATRIX VIEW -->
+    <!-- ========================================== -->
+    <div id="view-compare" class="hidden space-y-6">
+      
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-900 flex items-center space-x-2">
+              <i data-lucide="columns-2" class="w-5 h-5"></i>
+              <span>โหมดเปรียบเทียบผู้สมัคร (Side-by-Side Comparison)</span>
+            </h2>
+            <p class="text-xs text-zinc-500 mt-0.5">เลือกเปรียบเทียบได้สูงสุด 4 คน เพื่ออ่านคำตอบข้อต่อข้อและเปรียบเทียบคุณสมบัติ</p>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="clearComparison()" class="text-xs text-zinc-600 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-3 py-1.5 rounded-lg transition-colors">
+              ล้างการเปรียบเทียบ
+            </button>
+            <button onclick="switchMainView('candidates')" class="text-xs bg-zinc-900 text-white hover:bg-zinc-800 px-3 py-1.5 rounded-lg transition-colors">
+              + เลือกผู้สมัครเพิ่ม
+            </button>
+          </div>
+        </div>
+
+        <!-- Add candidate quick dropdown selector -->
+        <div class="mt-4 pt-3 border-t border-zinc-100 flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-zinc-500">เลือกผู้สมัครเพิ่มด่วน:</span>
+          <select id="quick-compare-select" onchange="quickAddCompare(this.value); this.value='';" class="bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+            <option value="">-- เลือกรายชื่อเพื่อนำมาเปรียบเทียบ --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Compare Grid Container -->
+      <div id="compare-matrix-container">
+        <!-- Rendered comparison columns & question rows -->
+      </div>
+
+      <!-- Compare Empty State -->
+      <div id="compare-empty" class="text-center py-20 bg-white border border-zinc-200 rounded-2xl">
+        <i data-lucide="users-2" class="w-12 h-12 text-zinc-300 mx-auto mb-3"></i>
+        <h3 class="text-sm font-semibold text-zinc-900">ยังไม่มีรายชื่อในรายการเปรียบเทียบ</h3>
+        <p class="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
+          กลับไปที่หน้ารายชื่อ แล้วกดปุ่ม <strong>"เปรียบเทียบ"</strong> บนการ์ดผู้สมัครที่คุณต้องการเปรียบเทียบคำตอบ
+        </p>
+        <button onclick="switchMainView('candidates')" class="mt-4 inline-flex items-center space-x-1.5 text-xs bg-zinc-900 text-white px-3.5 py-2 rounded-lg hover:bg-zinc-800">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          <span>ไปยังหน้ารายชื่อผู้สมัคร</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: STATISTICS & ANALYTICS DASHBOARD -->
+    <!-- ========================================== -->
+    <div id="view-stats" class="hidden space-y-6">
+      
+      <!-- Analytics Header -->
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-zinc-900 flex items-center space-x-2">
+              <i data-lucide="pie-chart" class="w-5 h-5"></i>
+              <span>สถิติและการวิเคราะห์ข้อมูลผู้สมัคร</span>
+            </h2>
+            <p class="text-xs text-zinc-500 mt-0.5">ภาพรวมการสมัคร สัดส่วนชั้นปี เพศ ภาควิชา และการกระจายตัวของแต่ละฝ่าย</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="text-zinc-500">ฐานข้อมูล:</span>
+            <span class="font-medium bg-zinc-100 text-zinc-800 px-2.5 py-1 rounded-md border border-zinc-200">152 คน (ผ่านการคัดกรอง)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Grid 1: Department Popularity Bar Chart & Year Donut -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Department Bar Chart (Choice 1 vs Choice 2) -->
+        <div class="lg:col-span-8 bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-semibold text-zinc-900">จำนวนผู้สมัครแยกตามฝ่าย (เปรียบเทียบอันดับ 1 vs 2)</h3>
+              <p class="text-xs text-zinc-500">แสดงความนิยมของแต่ละฝ่ายทั้งในฐานะตัวเลือกอันดับ 1 และอันดับ 2</p>
+            </div>
+          </div>
+          <div class="h-72">
+            <canvas id="chart-departments"></canvas>
+          </div>
+        </div>
+
+        <!-- Year Distribution (68 vs 69) -->
+        <div class="lg:col-span-4 bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold text-zinc-900">สัดส่วนชั้นปี (รหัส 68 vs 69)</h3>
+            <p class="text-xs text-zinc-500">ปี 1 (รหัส 69) เทียบกับ ปี 2 (รหัส 68)</p>
+          </div>
+          <div class="flex-1 flex items-center justify-center h-52">
+            <canvas id="chart-years"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-t border-zinc-100 grid grid-cols-2 text-center text-xs">
+            <div>
+              <span class="text-zinc-400">รหัส 69 (ปี 1)</span>
+              <div id="stat-year-69" class="text-base font-bold text-zinc-900 font-mono">90 คน (59.2%)</div>
+            </div>
+            <div>
+              <span class="text-zinc-400">รหัส 68 (ปี 2)</span>
+              <div id="stat-year-68" class="text-base font-bold text-zinc-900 font-mono">62 คน (40.8%)</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Charts Grid 2: Gender, Majors, Interview -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Gender Chart -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold text-zinc-900">สัดส่วนเพศ (ชาย vs หญิง)</h3>
+            <p class="text-xs text-zinc-500">การกระจายตัวตามเพศสภาพของผู้สมัคร</p>
+          </div>
+          <div class="h-48 flex items-center justify-center">
+            <canvas id="chart-gender"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-t border-zinc-100 grid grid-cols-2 text-center text-xs">
+            <div>
+              <span class="text-zinc-400">ชาย</span>
+              <div id="stat-gender-m" class="text-base font-bold text-zinc-900 font-mono">67 คน</div>
+            </div>
+            <div>
+              <span class="text-zinc-400">หญิง</span>
+              <div id="stat-gender-f" class="text-base font-bold text-zinc-900 font-mono">85 คน</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Experience Chart -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold text-zinc-900">ประสบการณ์การทำค่ายวิศวะเหลาฯ</h3>
+            <p class="text-xs text-zinc-500">สัดส่วนผู้ที่เคยทำค่ายมาก่อนกับผู้สมัครใหม่</p>
+          </div>
+          <div class="h-48 flex items-center justify-center">
+            <canvas id="chart-experience"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-t border-zinc-100 grid grid-cols-2 text-center text-xs">
+            <div>
+              <span class="text-zinc-400">ผู้สมัครใหม่</span>
+              <div id="stat-exp-new" class="text-base font-bold text-zinc-900 font-mono">-- คน</div>
+            </div>
+            <div>
+              <span class="text-zinc-400">เคยทำค่าย</span>
+              <div id="stat-exp-old" class="text-base font-bold text-zinc-900 font-mono">-- คน</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interview Date Preferences -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+          <div class="mb-3">
+            <h3 class="text-sm font-semibold text-zinc-900">วันที่สะดวกสัมภาษณ์</h3>
+            <p class="text-xs text-zinc-500">การกระจายตัวของวันสัมภาษณ์ (10 - 11 ต.ค.)</p>
+          </div>
+          <div class="h-48 flex items-center justify-center">
+            <canvas id="chart-interview"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-t border-zinc-100 text-center text-xs text-zinc-500">
+            สถานที่: คณะวิศวกรรมศาสตร์ ศูนย์รังสิต
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Major Distribution (Horizontal Bar Chart) -->
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-zinc-900">สถิติแยกตามภาควิชา (Top Engineering Majors)</h3>
+          <p class="text-xs text-zinc-500">จำนวนผู้สมัครแยกตามภาควิชาในคณะวิศวกรรมศาสตร์</p>
+        </div>
+        <div class="h-64">
+          <canvas id="chart-majors"></canvas>
+        </div>
+      </div>
+
+      <!-- Department Matrix Summary Table -->
+      <div class="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
+        <div class="mb-4">
+          <h3 class="text-sm font-semibold text-zinc-900">ตารางสรุปข้อมูลรายฝ่ายแบบละเอียด (Department Matrix)</h3>
+          <p class="text-xs text-zinc-500">ข้อมูลรวม อันดับ 1, อันดับ 2, ชั้นปี, และเพศในแต่ละฝ่าย</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-zinc-600">
+            <thead class="bg-zinc-50 text-zinc-700 font-semibold border-b border-zinc-200">
+              <tr>
+                <th class="py-2.5 px-3">ชื่อฝ่าย</th>
+                <th class="py-2.5 px-3 text-center">อันดับ 1</th>
+                <th class="py-2.5 px-3 text-center">อันดับ 2</th>
+                <th class="py-2.5 px-3 text-center">รวมความสนใจ</th>
+                <th class="py-2.5 px-3 text-center">รหัส 68 (ปี 2)</th>
+                <th class="py-2.5 px-3 text-center">รหัส 69 (ปี 1)</th>
+                <th class="py-2.5 px-3 text-center">ชาย</th>
+                <th class="py-2.5 px-3 text-center">หญิง</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-table-body" class="divide-y divide-zinc-100 font-mono">
+              <!-- Populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- FLOATING COMPARE TRAY (When items selected) -->
+  <!-- ========================================== -->
+  <div id="floating-compare-tray" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-zinc-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-xl flex items-center space-x-4 border border-zinc-700 text-xs">
+    <div class="flex items-center space-x-2">
+      <i data-lucide="columns-2" class="w-4 h-4 text-zinc-300"></i>
+      <span>เลือกเปรียบเทียบอยู่ <strong id="tray-count" class="font-mono text-emerald-400">0</strong> คน (สูงสุด 4 คน)</span>
+    </div>
+    <div id="tray-avatars" class="flex items-center -space-x-1.5">
+      <!-- Mini avatar pills -->
+    </div>
+    <div class="flex items-center space-x-2">
+      <button onclick="clearComparison()" class="text-zinc-400 hover:text-white px-2 py-1">ล้าง</button>
+      <button onclick="switchMainView('compare')" class="bg-white text-zinc-900 font-medium px-3.5 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
+        เปิดหน้าเปรียบเทียบ
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- CANDIDATE DETAIL MODAL (DRAWER/MODAL) -->
+  <!-- ========================================== -->
+  <div id="detail-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+    <div class="bg-white w-full max-w-4xl max-h-[92vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200">
+      
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 border-b border-zinc-200 bg-zinc-50 flex items-start justify-between">
+        <div class="flex items-center space-x-3.5">
+          <div id="modal-avatar" class="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-lg shadow-xs">
+            เป
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 id="modal-name" class="text-base sm:text-lg font-bold text-zinc-900">ชื่อ นามสกุล</h2>
+              <span id="modal-nick" class="text-sm text-zinc-600 font-medium">(ชื่อเล่น)</span>
+              <span id="modal-sid" class="text-xs px-2 py-0.5 rounded font-mono bg-zinc-200 text-zinc-800">69xxxxxxxx</span>
+              <span id="modal-year-badge" class="text-xs px-2 py-0.5 rounded font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">ปี 1</span>
+              <span id="modal-gender-badge" class="text-xs px-2 py-0.5 rounded font-medium bg-zinc-100 text-zinc-700 border border-zinc-200">เพศ</span>
+              <span id="modal-status-badge" class="hidden text-xs px-2 py-0.5 rounded font-medium bg-rose-50 text-rose-700 border border-rose-200">ตัดสิทธิ์</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-zinc-500">
+              <span id="modal-major" class="font-medium text-zinc-700">ภาควิชา</span>
+              <span>•</span>
+              <span id="modal-campus">ศูนย์รังสิต</span>
+              <span>•</span>
+              <span>อันดับ 1: <strong id="modal-c1-tag" class="text-zinc-900">ฝ่าย...</strong></span>
+              <span>•</span>
+              <span>อันดับ 2: <strong id="modal-c2-tag" class="text-zinc-600">ฝ่าย...</strong></span>
+            </div>
+
+            <!-- Modal Tier Ranking Bar (เฉพาะฝ่าย) -->
+            <div class="mt-3 pt-2.5 border-t border-zinc-200/80 flex flex-wrap items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-zinc-200/90 shadow-2xs">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-semibold text-zinc-700 flex items-center space-x-1">
+                  <i data-lucide="award" class="w-3.5 h-3.5 text-amber-500"></i>
+                  <span>ประเมิน Tier ฝ่าย:</span>
+                </span>
+                <select id="modal-tier-dept-select" onchange="updateModalTierControls()" class="text-xs bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1 font-medium text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                  <!-- Choices populated dynamically -->
+                </select>
+              </div>
+
+              <div class="flex items-center space-x-1.5 text-xs">
+                <button id="modal-btn-tier-1" onclick="setApplicantTierFromModal(1)" class="px-2.5 py-1 rounded-lg font-semibold text-xs border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-600 hover:text-white transition-all">Tier 1</button>
+                <button id="modal-btn-tier-2" onclick="setApplicantTierFromModal(2)" class="px-2.5 py-1 rounded-lg font-semibold text-xs border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white transition-all">Tier 2</button>
+                <button id="modal-btn-tier-3" onclick="setApplicantTierFromModal(3)" class="px-2.5 py-1 rounded-lg font-semibold text-xs border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-600 hover:text-white transition-all">Tier 3</button>
+                <button id="modal-btn-tier-0" onclick="setApplicantTierFromModal(0)" class="px-2 py-1 rounded-lg text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-all text-xs" title="ยกเลิกการจัด Tier">✕ ปลด</button>
+              </div>
+
+              <div class="w-full">
+                <input type="text" id="modal-tier-note-input" onchange="saveModalTierNote()" placeholder="พิมพ์โน้ตการสัมภาษณ์/คะแนนประเมินสำหรับฝ่ายนี้..." class="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 focus:bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-colors">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls: Nav & Close -->
+        <div class="flex items-center space-x-1.5">
+          <button id="modal-prev-btn" onclick="navigateModal(-1)" title="คนก่อนหน้า" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition-colors">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <button id="modal-next-btn" onclick="navigateModal(1)" title="คนถัดไป" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition-colors">
+            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+          <button onclick="closeDetailModal()" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Section Tabs: แยกชุดคำถามทั่วไป vs เฉพาะฝ่าย -->
+      <div class="px-5 border-b border-zinc-200 bg-white flex items-center justify-between text-xs">
+        <div class="flex space-x-6">
+          <button id="tab-btn-general" onclick="switchModalTab('general')" class="py-3 font-semibold text-zinc-900 border-b-2 border-zinc-900 transition-colors flex items-center space-x-1.5">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+            <span>คำถามทั่วไป (6 ข้อ)</span>
+          </button>
+          <button id="tab-btn-c1" onclick="switchModalTab('c1')" class="py-3 font-medium text-zinc-500 hover:text-zinc-900 transition-colors flex items-center space-x-1.5">
+            <i data-lucide="target" class="w-3.5 h-3.5"></i>
+            <span id="tab-title-c1">คำถามเฉพาะฝ่าย (อันดับ 1)</span>
+          </button>
+          <button id="tab-btn-c2" onclick="switchModalTab('c2')" class="py-3 font-medium text-zinc-500 hover:text-zinc-900 transition-colors flex items-center space-x-1.5">
+            <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+            <span id="tab-title-c2">คำถามเฉพาะฝ่าย (อันดับ 2)</span>
+          </button>
+          <button id="tab-btn-contact" onclick="switchModalTab('contact')" class="py-3 font-medium text-zinc-500 hover:text-zinc-900 transition-colors flex items-center space-x-1.5">
+            <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+            <span>ข้อมูลติดต่อ & สัมภาษณ์</span>
+          </button>
+        </div>
+
+        <div>
+          <button id="modal-compare-toggle-btn" onclick="toggleCompareFromModal()" class="inline-flex items-center space-x-1 px-3 py-1 rounded-md text-xs font-medium border border-zinc-200 hover:bg-zinc-100 transition-colors">
+            <i data-lucide="plus" class="w-3 h-3"></i>
+            <span>เปรียบเทียบ</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+        
+        <!-- SECTION 1: คำถามทั่วไป (6 ข้อ) -->
+        <div id="modal-tab-content-general" class="space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+            <span class="text-xs font-semibold uppercase text-zinc-400 tracking-wider">ชุดคำถามทั่วไป / ส่วนกลาง (คัดกรองเบื้องต้น)</span>
+            <span class="text-xs text-zinc-400">ทั้งหมด 6 ข้อ</span>
+          </div>
+          <div id="modal-general-questions-list" class="space-y-4">
+            <!-- Rendered general Q&A -->
+          </div>
+        </div>
+
+        <!-- SECTION 2: คำถามเฉพาะฝ่าย อันดับ 1 -->
+        <div id="modal-tab-content-c1" class="hidden space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+            <div>
+              <span class="text-xs font-semibold uppercase text-zinc-400 tracking-wider">คำถามเฉพาะทางสำหรับ</span>
+              <span id="modal-dept1-title" class="text-xs font-bold text-zinc-900 ml-1">ฝ่าย...</span>
+            </div>
+            <span class="text-xs bg-zinc-900 text-white px-2 py-0.5 rounded-full font-medium">อันดับ 1</span>
+          </div>
+          <div id="modal-c1-questions-list" class="space-y-4">
+            <!-- Rendered Choice 1 Q&A -->
+          </div>
+        </div>
+
+        <!-- SECTION 3: คำถามเฉพาะฝ่าย อันดับ 2 -->
+        <div id="modal-tab-content-c2" class="hidden space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-zinc-100">
+            <div>
+              <span class="text-xs font-semibold uppercase text-zinc-400 tracking-wider">คำถามเฉพาะทางสำหรับ</span>
+              <span id="modal-dept2-title" class="text-xs font-bold text-zinc-900 ml-1">ฝ่าย...</span>
+            </div>
+            <span class="text-xs bg-zinc-100 text-zinc-700 border border-zinc-300 px-2 py-0.5 rounded-full font-medium">อันดับ 2</span>
+          </div>
+          <div id="modal-c2-questions-list" class="space-y-4">
+            <!-- Rendered Choice 2 Q&A -->
+          </div>
+        </div>
+
+        <!-- SECTION 4: ข้อมูลติดต่อ & สัมภาษณ์ -->
+        <div id="modal-tab-content-contact" class="hidden space-y-4 text-xs">
+          <div class="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+            <h4 class="font-semibold text-zinc-900 text-sm">ข้อมูลการติดต่อ</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <span class="text-zinc-400 block">เบอร์โทรศัพท์:</span>
+                <span id="modal-phone" class="font-mono text-zinc-800 font-medium text-sm">--</span>
+              </div>
+              <div>
+                <span class="text-zinc-400 block">ช่องทางการติดต่ออื่นๆ (LINE / IG / Facebook):</span>
+                <span id="modal-contact-extra" class="text-zinc-800 font-medium">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+            <h4 class="font-semibold text-zinc-900 text-sm">ข้อมูลการสัมภาษณ์ & การลงทะเบียน</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <span class="text-zinc-400 block">วันสัมภาษณ์ที่สะดวก:</span>
+                <span id="modal-interview-date" class="text-zinc-800 font-medium">--</span>
+              </div>
+              <div>
+                <span class="text-zinc-400 block">เวลาที่ส่งแบบฟอร์ม:</span>
+                <span id="modal-timestamp" class="font-mono text-zinc-600">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between text-xs">
+        <span class="text-zinc-500">ลำดับที่ <strong id="modal-current-index" class="font-mono text-zinc-900">1</strong> จาก <span id="modal-total-index" class="font-mono">152</span> คน</span>
+        <button onclick="closeDetailModal()" class="px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 transition-colors font-medium">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- EXCLUDED APPLICANTS MODAL -->
+  <!-- ========================================== -->
+  <div id="excluded-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-zinc-200">
+      <div class="p-5 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-zinc-900 flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span>รายชื่อผู้สมัครที่ถูกตัดสิทธิ์ (5 คน)</span>
+          </h3>
+          <p class="text-xs text-zinc-500 mt-0.5">ตามเกณฑ์: *ชื่อแดงและชื่อเหลือง ตัดออก และ รหัสนักศึกษา 67 ไม่นำไม่คิด</p>
+        </div>
+        <button onclick="closeExcludedModal()" class="text-zinc-400 hover:text-zinc-700">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto max-h-[70vh]">
+        <div id="excluded-list-container" class="space-y-3">
+          <!-- Populated excluded cards -->
+        </div>
+      </div>
+      <div class="p-4 border-t border-zinc-200 bg-zinc-50 text-right">
+        <button onclick="closeExcludedModal()" class="text-xs bg-zinc-900 text-white px-4 py-2 rounded-lg">
+          ปิด
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP LOGIC SCRIPT -->
+  <script src="app.js"></script>
+
+</body>
+</html>
